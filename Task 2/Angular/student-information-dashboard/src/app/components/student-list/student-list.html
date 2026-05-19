@@ -1,0 +1,50 @@
+<div class="student-list">
+
+    <h2>Student List</h2>
+  
+    <div
+      class="cards-container"
+      *ngIf="students.length > 0">
+  
+      <div
+        class="student-card"
+        *ngFor="let student of students; let i = index">
+  
+        <h3>{{ student.name }}</h3>
+  
+        <p>
+          <strong>Age:</strong>
+          {{ student.age }}
+        </p>
+  
+        <p>
+          <strong>Course:</strong>
+          {{ student.course }}
+        </p>
+  
+        <p>
+          <strong>Address:</strong>
+          {{ student.address }}
+        </p>
+  
+        <div class="button-group">
+  
+          <button
+            class="edit-btn"
+            (click)="editStudentEvent.emit(i)">
+            Edit
+          </button>
+  
+          <button
+            class="delete-btn"
+            (click)="deleteStudentEvent.emit(i)">
+            Delete
+          </button>
+  
+        </div>
+  
+      </div>
+  
+    </div>
+  
+  </div>

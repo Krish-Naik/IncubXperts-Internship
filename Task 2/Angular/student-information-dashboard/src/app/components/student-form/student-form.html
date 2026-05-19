@@ -1,0 +1,35 @@
+<form class="student-form">
+
+    <input
+      type="text"
+      placeholder="Enter Name"
+      [(ngModel)]="student.name"
+      name="name">
+  
+    <input
+      type="number"
+      placeholder="Enter Age"
+      [(ngModel)]="student.age"
+      name="age">
+  
+    <input
+      type="text"
+      placeholder="Enter Course"
+      [(ngModel)]="student.course"
+      name="course">
+  
+    <input
+      type="text"
+      placeholder="Enter Address"
+      [(ngModel)]="student.address"
+      name="address">
+  
+    <p class="error" *ngIf="error">
+      {{ error }}
+    </p>
+  
+    <button type="button" (click)="submitForm()">
+      {{ editStudent ? 'Update Student' : 'Add Student' }}
+    </button>
+  
+  </form>

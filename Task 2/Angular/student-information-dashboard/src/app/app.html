@@ -1,0 +1,16 @@
+<div class="container">
+
+  <h1>Student Dashboard</h1>
+
+  <app-student-form
+    [editStudent]="editStudent"
+    (studentAdded)="addOrUpdateStudent($event)">
+  </app-student-form>
+
+  <app-student-list
+    [students]="students"
+    (deleteStudentEvent)="deleteStudent($event)"
+    (editStudentEvent)="editStudentData($event)">
+  </app-student-list>
+
+</div>
