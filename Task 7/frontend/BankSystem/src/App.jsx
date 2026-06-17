@@ -149,7 +149,7 @@ function Button({ children, variant = "primary", style, ...props }) {
   );
 }
 
-/**
+/*
  * Generic list for both BankAccountResponse and CustomerLookupResponse.
  * Distinguishes by checking for `accountNumber` in the item.
  */
@@ -294,7 +294,7 @@ export default function App() {
   const canCloseAccount = permissions.includes("accounts.close");
   const canReadAllTransactions = permissions.includes("transactions.all.read");
 
-  /**
+  /*
    * Staff means "has access to all accounts" (Teller, Manager, Admin).
    * Used to route deposit/withdraw to the correct endpoint.
    */
@@ -376,7 +376,7 @@ export default function App() {
     setTransactions(data);
   };
 
-  /**
+  /*
    * When a row in the accounts list is clicked:
    * pre-fills Update, Deposit, Withdraw, and Transfer-sender forms.
    * Create Account has its own dedicated customer-search picker.
@@ -1305,7 +1305,7 @@ export default function App() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {new Date(tx.createdAtUtc).toLocaleString()}
+                            {new Date(tx.createdAtUtc + 'Z').toLocaleString()}
                           </td>
                         </tr>
                       ))}
