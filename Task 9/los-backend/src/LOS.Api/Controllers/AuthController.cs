@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using LOS.Api.Contracts.Requests;
@@ -17,51 +18,89 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
     private bool UseSecureCookies => !IsDev || Request.IsHttps;
     private SameSiteMode AuthCookieSameSite => IsDev ? SameSiteMode.Strict : SameSiteMode.None;
 
+    private CookieOptions CreateAuthCookieOptions(string path = "/", DateTime? expires = null)
+    {
+        var options = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = UseSecureCookies,
+            SameSite = AuthCookieSameSite,
+            Path = path,
+            IsEssential = true,
+        };
+
+        if (expires.HasValue)
+        {
+            options.Expires = expires.Value;
+        }
+
+        return options;
+    }
+
+    private static string BuildCrossSiteSetCookieHeader(
+        string name,
+        string value,
+        DateTime? expiresUtc,
+        bool delete = false
+    )
+    {
+        var header = $"{name}={value}; path=/; secure; samesite=none; httponly; partitioned";
+
+        if (delete)
+        {
+            return $"{header}; max-age=0";
+        }
+
+        return $"{header}; expires={expiresUtc!.Value.ToString("R", CultureInfo.InvariantCulture)}";
+    }
+
     private void SetAuthCookies(string accessToken, DateTime expiresAt, string refreshToken)
     {
-        var accessTokenOptions = new CookieOptions
+        if (IsDev)
         {
-            HttpOnly = true,
-            Secure = UseSecureCookies,
-            SameSite = AuthCookieSameSite,
-            Path = "/",
-            Expires = expiresAt,
-            IsEssential = true,
-        };
+            Response.Cookies.Append(
+                "los_access_token",
+                accessToken,
+                CreateAuthCookieOptions(expires: expiresAt)
+            );
+            Response.Cookies.Append(
+                "los_refresh_token",
+                refreshToken,
+                CreateAuthCookieOptions(expires: DateTime.UtcNow.AddDays(7))
+            );
+            return;
+        }
 
-        var refreshTokenOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = UseSecureCookies,
-            SameSite = AuthCookieSameSite,
-            Path = "/api/auth",
-            Expires = DateTime.UtcNow.AddDays(7),
-            IsEssential = true,
-        };
-
-        Response.Cookies.Append("los_access_token", accessToken, accessTokenOptions);
-        Response.Cookies.Append("los_refresh_token", refreshToken, refreshTokenOptions);
+        Response.Headers.Append(
+            "Set-Cookie",
+            BuildCrossSiteSetCookieHeader("los_access_token", accessToken, expiresAt)
+        );
+        Response.Headers.Append(
+            "Set-Cookie",
+            BuildCrossSiteSetCookieHeader(
+                "los_refresh_token",
+                refreshToken,
+                DateTime.UtcNow.AddDays(7)
+            )
+        );
     }
 
     private void ClearAuthCookies()
     {
-        Response.Cookies.Delete(
-            "los_access_token",
-            new CookieOptions
-            {
-                Secure = UseSecureCookies,
-                SameSite = AuthCookieSameSite,
-                Path = "/",
-            }
+        if (IsDev)
+        {
+            Response.Cookies.Delete("los_access_token", CreateAuthCookieOptions());
+            Response.Cookies.Delete("los_refresh_token", CreateAuthCookieOptions());
+            return;
+        }
+
+        Response.Headers.Append(
+            "Set-Cookie",
+            BuildCrossSiteSetCookieHeader("los_access_token", string.Empty, null, delete: true)
         );
-        Response.Cookies.Delete(
-            "los_refresh_token",
-            new CookieOptions
-            {
-                Secure = UseSecureCookies,
-                SameSite = AuthCookieSameSite,
-                Path = "/api/auth",
-            }
+        Response.Headers.Append(
+            "Set-Cookie",
+            BuildCrossSiteSetCookieHeader("los_refresh_token", string.Empty, null, delete: true)
         );
     }
 

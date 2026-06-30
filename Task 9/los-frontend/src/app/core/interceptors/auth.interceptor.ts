@@ -33,6 +33,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
+      if (!tokenService.hasSession()) {
+        return throwError(() => error);
+      }
+
       if (isRefreshing) {
         return refreshDone$.pipe(
           filter((result) => result !== null),
@@ -55,9 +59,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         catchError((refreshError) => {
           isRefreshing = false;
           refreshDone$.next(false);
+          const hadSession = tokenService.hasSession();
           tokenService.clear();
-          void router.navigate(['/auth/login'],
-            { queryParams: { reason: 'session-expired' } });
+          if (hadSession) {
+            void router.navigate(['/auth/login'],
+              { queryParams: { reason: 'session-expired' } });
+          }
           return throwError(() => refreshError);
         })
       );
