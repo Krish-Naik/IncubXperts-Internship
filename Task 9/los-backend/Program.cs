@@ -19,13 +19,13 @@ builder.Services.Configure<SecurityOptions>(
     builder.Configuration.GetSection(SecurityOptions.SectionName)
 );
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.Configure<FrontendOptions>(
+    builder.Configuration.GetSection(FrontendOptions.SectionName)
+);
 
 var jwtOptions =
     builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-var corsOrigins = (
-    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? []
-)
+var corsOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
     .Where(origin => !string.IsNullOrWhiteSpace(origin))
     .Select(origin => origin.Trim().TrimEnd('/'))
     .ToHashSet(StringComparer.OrdinalIgnoreCase);

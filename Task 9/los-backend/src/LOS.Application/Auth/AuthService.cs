@@ -16,10 +16,12 @@ public class AuthService(
     JwtTokenGenerator jwtTokenGenerator,
     RefreshTokenService refreshTokenService,
     IOptions<SecurityOptions> securityOptions,
+    IOptions<FrontendOptions> frontendOptions,
     ILogger<AuthService> logger
 )
 {
     private readonly SecurityOptions _security = securityOptions.Value;
+    private readonly FrontendOptions _frontend = frontendOptions.Value;
 
     public async Task<LoginResponseDto> LoginAsync(
         LoginRequestDto request,
@@ -234,9 +236,10 @@ public class AuthService(
 
         await db.SaveChangesAsync(ct);
 
+        var baseUrl = (_frontend.BaseUrl ?? "http://localhost:4200").Trim().TrimEnd('/');
         var link = isInvite
-            ? $"http://localhost:4200/auth/reset-password?token={tokenValue}&invite=true"
-            : $"http://localhost:4200/auth/reset-password?token={tokenValue}";
+            ? $"{baseUrl}/auth/reset-password?token={tokenValue}&invite=true"
+            : $"{baseUrl}/auth/reset-password?token={tokenValue}";
 
         logger.LogInformation(
             "Password reset link for user {UserId}: {Link}",

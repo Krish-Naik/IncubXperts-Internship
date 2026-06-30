@@ -113,6 +113,10 @@ resource apiApp 'Microsoft.Web/sites@2023-12-01' = {
           value: frontendUrl
         }
         {
+          name: 'Frontend__BaseUrl'
+          value: frontendUrl
+        }
+        {
           name: 'Cors__AllowedOrigins__1'
           value: 'http://localhost:4200'
         }
