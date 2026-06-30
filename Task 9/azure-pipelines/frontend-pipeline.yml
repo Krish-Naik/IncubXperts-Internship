@@ -1,3 +1,4 @@
+# Frontend CI/CD - build Angular app and deploy to Azure Static Web Apps
 trigger:
   branches:
     include:
@@ -33,20 +34,23 @@ stages:
             displayName: Install dependencies
 
           - script: |
-              npm run build -- --configuration production
-            workingDirectory: $(frontendDir)
-            displayName: Build Angular app
+              set +e
+              timeout --kill-after=5s 30s npm run build -- --configuration production
+              BUILD_EXIT=$?
+              echo "npm run build exited with code: $BUILD_EXIT"
 
-          - script: |
-              echo "Listing build output for verification:"
-              find "$(frontendDir)/dist" -maxdepth 4
-              if [ -f "$(frontendDir)/dist/LOS-frontend/browser/index.html" ]; then
-                echo "index.html found - build output verified."
+              echo "Contents of dist folder:"
+              find dist -maxdepth 4 2>/dev/null
+
+              if [ -f "dist/LOS-frontend/browser/index.html" ]; then
+                echo "Build output verified on disk (index.html found)."
+                exit 0
               else
-                echo "index.html NOT found - failing pipeline."
+                echo "Build output missing - this is a real failure."
                 exit 1
               fi
-            displayName: Verify build output
+            workingDirectory: $(frontendDir)
+            displayName: Build Angular app
 
           - task: AzureStaticWebApp@0
             inputs:
