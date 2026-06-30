@@ -1,0 +1,34 @@
+@los_base = http://localhost:5116
+
+### Auth
+POST {{los_base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@los.local",
+  "password": "Admin@12345"
+}
+
+###
+POST {{los_base}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "admin@los.local"
+}
+
+###
+GET {{los_base}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+###
+GET {{los_base}}/api/users
+Authorization: Bearer {{accessToken}}
+
+###
+GET {{los_base}}/api/roles
+Authorization: Bearer {{accessToken}}
+
+###
+GET {{los_base}}/api/branches
+Authorization: Bearer {{accessToken}}

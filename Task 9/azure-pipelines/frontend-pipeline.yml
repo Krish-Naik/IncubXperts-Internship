@@ -1,0 +1,40 @@
+# Frontend CI/CD - build Angular app and deploy to Azure Static Web Apps
+trigger:
+  branches:
+    include:
+      - main
+      - feature/authentication
+  paths:
+    include:
+      - Task 9/los-frontend/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: '22.x'
+  frontendDir: 'Task 9/los-frontend'
+  azureStaticWebAppsApiToken: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'
+
+stages:
+  - stage: BuildAndDeploy
+    jobs:
+      - job: BuildFrontend
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            workingDirectory: $(frontendDir)
+            displayName: Install dependencies
+
+          - script: npm run build -- --configuration production
+            workingDirectory: $(frontendDir)
+            displayName: Build Angular app
+
+          - task: AzureStaticWebApp@0
+            inputs:
+              app_location: $(frontendDir)
+              output_location: dist/LOS-frontend/browser
+              azure_static_web_apps_api_token: $(azureStaticWebAppsApiToken)
