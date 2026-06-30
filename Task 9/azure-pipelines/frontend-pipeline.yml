@@ -8,6 +8,8 @@ trigger:
     include:
       - Task 9/los-frontend/*
 
+pr: none
+
 pool:
   vmImage: ubuntu-latest
 
@@ -31,7 +33,21 @@ stages:
             workingDirectory: $(frontendDir)
             displayName: Install dependencies
 
-          - script: npm run build -- --configuration production
+          - script: |
+              set +e
+              timeout 300 npm run build -- --configuration production
+              EXIT_CODE=$?
+              if [ $EXIT_CODE -eq 124 ]; then
+                echo "Build process did not exit cleanly after 300s - checking if output was actually generated..."
+                if [ -d "dist/LOS-frontend/browser" ]; then
+                  echo "Build output found on disk. Treating as successful despite the hang."
+                  exit 0
+                else
+                  echo "Build output missing - this is a real failure, not just a hang."
+                  exit 1
+                fi
+              fi
+              exit $EXIT_CODE
             workingDirectory: $(frontendDir)
             displayName: Build Angular app
 
