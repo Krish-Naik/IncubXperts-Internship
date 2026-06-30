@@ -14,15 +14,16 @@ namespace LOS.Api.Controllers;
 public class AuthController(AuthService authService, IWebHostEnvironment env) : ControllerBase
 {
     private bool IsDev => env.IsDevelopment();
+    private bool UseSecureCookies => !IsDev || Request.IsHttps;
+    private SameSiteMode AuthCookieSameSite => IsDev ? SameSiteMode.Strict : SameSiteMode.None;
 
     private void SetAuthCookies(string accessToken, DateTime expiresAt, string refreshToken)
     {
-        var sameSite = IsDev ? SameSiteMode.Strict : SameSiteMode.None;
         var accessTokenOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = sameSite,
+            Secure = UseSecureCookies,
+            SameSite = AuthCookieSameSite,
             Path = "/",
             Expires = expiresAt,
             IsEssential = true,
@@ -31,8 +32,8 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
         var refreshTokenOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
-            SameSite = sameSite,
+            Secure = UseSecureCookies,
+            SameSite = AuthCookieSameSite,
             Path = "/api/auth",
             Expires = DateTime.UtcNow.AddDays(7),
             IsEssential = true,
@@ -44,13 +45,12 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
 
     private void ClearAuthCookies()
     {
-        var sameSite = IsDev ? SameSiteMode.Strict : SameSiteMode.None;
         Response.Cookies.Delete(
             "los_access_token",
             new CookieOptions
             {
-                Secure = true,
-                SameSite = sameSite,
+                Secure = UseSecureCookies,
+                SameSite = AuthCookieSameSite,
                 Path = "/",
             }
         );
@@ -58,8 +58,8 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
             "los_refresh_token",
             new CookieOptions
             {
-                Secure = true,
-                SameSite = sameSite,
+                Secure = UseSecureCookies,
+                SameSite = AuthCookieSameSite,
                 Path = "/api/auth",
             }
         );

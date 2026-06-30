@@ -22,9 +22,23 @@ builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOpt
 
 var jwtOptions =
     builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
-var corsOrigins =
+var corsOrigins = (
     builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:4200"];
+    ?? []
+)
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+if (isDevelopment)
+{
+    corsOrigins.Add("http://localhost:4200");
+}
+
+if (corsOrigins.Count == 0)
+{
+    corsOrigins.Add("http://localhost:4200");
+}
 
 builder.Services.AddDbContext<LOSDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -40,14 +54,16 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
         "Frontend",
         policy =>
-            policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()
+            policy
+                .WithOrigins(corsOrigins.ToArray())
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials()
     );
 });
 
