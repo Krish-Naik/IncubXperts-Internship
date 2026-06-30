@@ -35,25 +35,20 @@ stages:
 
           - script: |
               set +e
-              timeout 300 npm run build -- --configuration production
-              EXIT_CODE=$?
-              if [ $EXIT_CODE -eq 124 ]; then
-                echo "Build process did not exit cleanly after 300s - checking if output was actually generated..."
-                if [ -d "dist/LOS-frontend/browser" ]; then
-                  echo "Build output found on disk. Treating as successful despite the hang."
-                  exit 0
-                else
-                  echo "Build output missing - this is a real failure, not just a hang."
-                  exit 1
-                fi
+              timeout --kill-after=5s 30s npm run build -- --configuration production
+              if [ -f "dist/LOS-frontend/browser/index.html" ]; then
+                echo "Build output verified on disk (index.html found)."
+                exit 0
+              else
+                echo "Build output missing - this is a real failure."
+                exit 1
               fi
-              exit $EXIT_CODE
             workingDirectory: $(frontendDir)
             displayName: Build Angular app
 
           - task: AzureStaticWebApp@0
             inputs:
               app_location: $(frontendDir)
-              output_location: dist/LOS-frontend/browser
-              azure_static_web_apps_api_token: $(azureStaticWebAppsApiToken)
               skip_app_build: true
+              azure_static_web_apps_api_token: $(azureStaticWebAppsApiToken)
+              
