@@ -15,11 +15,13 @@ variables:
   nodeVersion: '22.x'
   frontendDir: 'Task 9/los-frontend'
   azureStaticWebAppsApiToken: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'
+  NG_CLI_ANALYTICS: 'false'
 
 stages:
   - stage: BuildAndDeploy
     jobs:
       - job: BuildFrontend
+        timeoutInMinutes: 15
         steps:
           - task: NodeTool@0
             inputs:

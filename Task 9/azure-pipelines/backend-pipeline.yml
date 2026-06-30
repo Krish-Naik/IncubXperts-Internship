@@ -22,19 +22,20 @@ stages:
   - stage: Build
     jobs:
       - job: BuildApi
+        timeoutInMinutes: 15
         steps:
           - task: UseDotNet@2
             inputs:
               packageType: sdk
               version: $(dotnetVersion)
 
-          - script: dotnet restore $(apiProject)
+          - script: dotnet restore "$(apiProject)"
             displayName: Restore packages
 
-          - script: dotnet build $(apiProject) -c $(buildConfiguration) --no-restore
+          - script: dotnet build "$(apiProject)" -c $(buildConfiguration) --no-restore
             displayName: Build API
 
-          - script: dotnet publish $(apiProject) -c $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/api
+          - script: dotnet publish "$(apiProject)" -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/api"
             displayName: Publish API
 
           - publish: $(Build.ArtifactStagingDirectory)/api
