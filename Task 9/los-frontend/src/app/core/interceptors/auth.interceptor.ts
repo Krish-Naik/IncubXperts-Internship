@@ -8,7 +8,15 @@ import { AuthService } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 import { Router } from '@angular/router';
 
+const AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/forgot-password',
+  '/auth/reset-password'
+];
 let isRefreshing = false;
+const refreshDone$ = new BehaviorSubject<boolean | null>(null);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
@@ -19,38 +27,40 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(credReq).pipe(
     catchError((error: HttpErrorResponse) => {
-
-      const isAuthEndpoint =
-        req.url.includes('/auth/login')   ||
-        req.url.includes('/auth/refresh') ||
-        req.url.includes('/auth/logout')  ||
-        req.url.includes('/auth/forgot-password') ||
-        req.url.includes('/auth/reset-password');
+      const isAuthEndpoint = AUTH_ENDPOINTS.some((url) => req.url.includes(url));
 
       if (isAuthEndpoint || error.status !== 401) {
         return throwError(() => error);
       }
-      if (!isRefreshing) {
-        isRefreshing = true;
 
-        return authService.refresh().pipe(
-          switchMap(() => {
-            isRefreshing = false;
-            return next(addCredentials(req));
-          }),
-          catchError((refreshError) => {
-            isRefreshing = false;
-            tokenService.clear();
-            void router.navigate(['/auth/login'],
-              { queryParams: { reason: 'session-expired' } });
-            return throwError(() => refreshError);
-          })
+      if (isRefreshing) {
+        return refreshDone$.pipe(
+          filter((result) => result !== null),
+          take(1),
+          switchMap((succeeded) =>
+            succeeded ? next(addCredentials(req)) : throwError(() => error)
+          )
         );
       }
-      tokenService.clear();
-      void router.navigate(['/auth/login'],
-        { queryParams: { reason: 'session-expired' } });
-      return throwError(() => error);
+
+      isRefreshing = true;
+      refreshDone$.next(null);
+
+      return authService.refresh().pipe(
+        switchMap(() => {
+          isRefreshing = false;
+          refreshDone$.next(true);
+          return next(addCredentials(req));
+        }),
+        catchError((refreshError) => {
+          isRefreshing = false;
+          refreshDone$.next(false);
+          tokenService.clear();
+          void router.navigate(['/auth/login'],
+            { queryParams: { reason: 'session-expired' } });
+          return throwError(() => refreshError);
+        })
+      );
     })
   );
 };

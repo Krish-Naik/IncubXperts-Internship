@@ -54,7 +54,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddAntiforgery();
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
-    options.MinimumSameSitePolicy = SameSiteMode.Strict;
+    options.MinimumSameSitePolicy = isDevelopment ? SameSiteMode.Strict : SameSiteMode.None;
     options.Secure = isDevelopment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
 });
 
