@@ -40,6 +40,8 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
@@ -115,6 +117,7 @@ if (isDevelopment)
 }
 
 app.UseCookiePolicy();
+app.UseRouting();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();

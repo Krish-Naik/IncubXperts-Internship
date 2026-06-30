@@ -17,11 +17,12 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
 
     private void SetAuthCookies(string accessToken, DateTime expiresAt, string refreshToken)
     {
+        var sameSite = IsDev ? SameSiteMode.Strict : SameSiteMode.None;
         var accessTokenOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !IsDev,
-            SameSite = SameSiteMode.Strict,
+            Secure = true,
+            SameSite = sameSite,
             Path = "/",
             Expires = expiresAt,
             IsEssential = true,
@@ -30,8 +31,8 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
         var refreshTokenOptions = new CookieOptions
         {
             HttpOnly = true,
-            Secure = !IsDev,
-            SameSite = SameSiteMode.Strict,
+            Secure = true,
+            SameSite = sameSite,
             Path = "/api/auth",
             Expires = DateTime.UtcNow.AddDays(7),
             IsEssential = true,
@@ -43,8 +44,25 @@ public class AuthController(AuthService authService, IWebHostEnvironment env) : 
 
     private void ClearAuthCookies()
     {
-        Response.Cookies.Delete("los_access_token");
-        Response.Cookies.Delete("los_refresh_token", new CookieOptions { Path = "/api/auth" });
+        var sameSite = IsDev ? SameSiteMode.Strict : SameSiteMode.None;
+        Response.Cookies.Delete(
+            "los_access_token",
+            new CookieOptions
+            {
+                Secure = true,
+                SameSite = sameSite,
+                Path = "/",
+            }
+        );
+        Response.Cookies.Delete(
+            "los_refresh_token",
+            new CookieOptions
+            {
+                Secure = true,
+                SameSite = sameSite,
+                Path = "/api/auth",
+            }
+        );
     }
 
     [HttpPost("login")]
