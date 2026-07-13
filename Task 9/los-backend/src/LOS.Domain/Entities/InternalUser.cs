@@ -14,6 +14,10 @@ public class InternalUser
     public Role Role { get; set; } = null!;
     public Guid? BranchId { get; set; }
     public Branch? Branch { get; set; }
+
+    public Guid? ReferredByBrokerId { get; set; }
+    public InternalUser? ReferredByBroker { get; set; }
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
     public AuthUser? Auth { get; set; }

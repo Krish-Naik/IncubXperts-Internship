@@ -66,7 +66,10 @@ export class ForgotPasswordComponent {
     this.error.set('');
     this.authService.forgotPassword(this.form.controls.email.value).subscribe({
       next: (response) => this.message.set(response.message),
-      error: (err: Error) => this.error.set(err.message),
+      error: (err: Error) => {
+        this.error.set(err.message);
+        this.loading.set(false);
+      },
       complete: () => this.loading.set(false)
     });
   }

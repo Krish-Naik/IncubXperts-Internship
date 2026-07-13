@@ -8,4 +8,5 @@ public class Branch
     public string City { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public ICollection<InternalUser> Users { get; set; } = [];
+    public BranchPolicy? Policy { get; set; }
 }

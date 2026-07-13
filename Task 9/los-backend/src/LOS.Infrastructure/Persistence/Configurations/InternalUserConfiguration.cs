@@ -19,6 +19,11 @@ public class InternalUserConfiguration : IEntityTypeConfiguration<InternalUser>
         builder.HasOne(x => x.Role).WithMany(x => x.Users).HasForeignKey(x => x.RoleId);
         builder.HasOne(x => x.Branch).WithMany(x => x.Users).HasForeignKey(x => x.BranchId);
         builder
+            .HasOne(x => x.ReferredByBroker)
+            .WithMany()
+            .HasForeignKey(x => x.ReferredByBrokerId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder
             .HasOne(x => x.Auth)
             .WithOne(x => x.InternalUser)
             .HasForeignKey<AuthUser>(x => x.InternalUserId);

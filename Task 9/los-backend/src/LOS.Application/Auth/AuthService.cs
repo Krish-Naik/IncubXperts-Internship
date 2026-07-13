@@ -1,4 +1,5 @@
 using LOS.Application.Auth.DTOs;
+using LOS.Application.Email;
 using LOS.Application.Options;
 using LOS.Domain.Constants;
 using LOS.Domain.Entities;
@@ -17,6 +18,7 @@ public class AuthService(
     RefreshTokenService refreshTokenService,
     IOptions<SecurityOptions> securityOptions,
     IOptions<FrontendOptions> frontendOptions,
+    IEmailService emailService,
     ILogger<AuthService> logger
 )
 {
@@ -219,6 +221,10 @@ public class AuthService(
         CancellationToken ct
     )
     {
+        var user =
+            await db.InternalUsers.FirstOrDefaultAsync(x => x.Id == internalUserId, ct)
+            ?? throw new InvalidOperationException("User not found.");
+
         var tokenValue = TokenGenerator.CreateSecureToken();
         var hours = isInvite ? _security.InviteTokenHours : _security.PasswordResetTokenHours;
 
@@ -246,6 +252,20 @@ public class AuthService(
             internalUserId,
             link
         );
+
+        var subject = isInvite ? "You're invited to LOS" : "Reset your LOS password";
+        var body = isInvite
+            ? $"<p>Hello {user.FullName},</p>"
+                + "<p>An account has been created for you on the Loan Origination System. "
+                + $"Click the link below to set your password and activate your account. This link expires in {hours} hours.</p>"
+                + $"<p><a href=\"{link}\">{link}</a></p>"
+            : $"<p>Hello {user.FullName},</p>"
+                + "<p>We received a request to reset your password. Click the link below to choose a new password. "
+                + $"This link expires in {hours} hours. If you didn't request this, you can ignore this email.</p>"
+                + $"<p><a href=\"{link}\">{link}</a></p>";
+
+        await emailService.SendAsync(user.Email, subject, body, ct);
+
         return link;
     }
 

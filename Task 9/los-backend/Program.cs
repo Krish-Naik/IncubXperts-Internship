@@ -1,12 +1,23 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using LOS.Api.Middleware;
+using LOS.Application.Admin;
+using LOS.Application.Applications;
+using LOS.Application.Approvals;
 using LOS.Application.Auth;
+using LOS.Application.CreditScore;
+using LOS.Application.Disbursement;
+using LOS.Application.Email;
+using LOS.Application.Kyc;
 using LOS.Application.Options;
+using LOS.Application.Reporting;
+using LOS.Application.Storage;
 using LOS.Application.Users;
 using LOS.Domain.Constants;
+using LOS.Infrastructure.Email;
 using LOS.Infrastructure.Identity;
 using LOS.Infrastructure.Persistence;
+using LOS.Infrastructure.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +32,12 @@ builder.Services.Configure<SecurityOptions>(
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.Configure<FrontendOptions>(
     builder.Configuration.GetSection(FrontendOptions.SectionName)
+);
+builder.Services.Configure<StorageOptions>(
+    builder.Configuration.GetSection(StorageOptions.SectionName)
+);
+builder.Services.Configure<EmailOptions>(
+    builder.Configuration.GetSection(EmailOptions.SectionName)
 );
 
 var jwtOptions =
@@ -41,7 +58,7 @@ if (corsOrigins.Count == 0)
 }
 
 builder.Services.AddDbContext<LOSDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
 builder.Services.AddScoped<PasswordHasher>();
@@ -51,7 +68,90 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 
-builder.Services.AddControllers();
+builder.Services.AddHttpClient();
+
+// Both storage providers are always registered so that documents already saved under
+// one provider stay readable even after "Storage:Provider" is switched to the other
+// (see IFileStorageResolver, used by KycService for reads). The provider named by
+// configuration is what NEW uploads use.
+builder.Services.AddScoped<LocalDiskFileStorageService>();
+builder.Services.AddScoped<SupabaseStorageFileStorageService>();
+builder.Services.AddScoped<IFileStorageResolver, FileStorageResolver>();
+builder.Services.AddScoped<IFileStorageService>(sp =>
+{
+    var provider = builder.Configuration["Storage:Provider"] ?? "LocalDisk";
+    return sp.GetRequiredService<IFileStorageResolver>().Resolve(provider);
+});
+
+// Same pattern for email: both concrete senders are always registered. Which one is
+// active is read from configuration at request time (not captured once at startup),
+// so in production you can flip between Mailtrap (demo-safe sandbox inbox) and SendGrid
+// (real delivery) purely via an App Service application setting + restart - no redeploy.
+// See "Email:Provider" in appsettings / deployment notes.
+builder.Services.AddScoped<SendGridEmailService>();
+builder.Services.AddScoped<FakeSmtpEmailService>();
+
+builder.Services.AddScoped<IEmailService>(sp =>
+{
+    var emailProvider = builder.Configuration["Email:Provider"] ?? "FakeSmtp";
+    IEmailService inner =
+        emailProvider == "SendGrid"
+            ? sp.GetRequiredService<SendGridEmailService>()
+            : sp.GetRequiredService<FakeSmtpEmailService>();
+    return new ResilientEmailService(
+        inner,
+        sp.GetRequiredService<ILogger<ResilientEmailService>>()
+    );
+});
+
+builder.Services.AddScoped<LoanApplicationService>();
+builder.Services.AddScoped<KycService>();
+builder.Services.AddScoped<ICreditScoreProvider, CreditScoreService>();
+builder.Services.AddScoped<LoanApprovalService>();
+builder.Services.AddScoped<DisbursementService>();
+builder.Services.AddScoped<LOS.Application.Brokers.BrokerService>();
+builder.Services.AddScoped<BrandingService>();
+builder.Services.AddScoped<BranchPolicyService>();
+builder.Services.AddScoped<AuditService>();
+builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<ReportExportService>();
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter()
+        );
+        options.JsonSerializerOptions.NumberHandling = System
+            .Text
+            .Json
+            .Serialization
+            .JsonNumberHandling
+            .AllowReadingFromString;
+        options.JsonSerializerOptions.ReferenceHandler = System
+            .Text
+            .Json
+            .Serialization
+            .ReferenceHandler
+            .IgnoreCycles;
+    });
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context
+            .ModelState.Where(kvp => kvp.Value?.Errors.Count > 0)
+            .ToDictionary(
+                kvp => kvp.Key,
+                kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+            );
+        var firstMessage =
+            errors.Values.SelectMany(m => m).FirstOrDefault() ?? "The request was invalid.";
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
+            new { message = firstMessage, errors }
+        );
+    };
+});
 builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
@@ -79,6 +179,7 @@ builder
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = !isDevelopment;
+        options.MapInboundClaims = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -120,6 +221,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(
         "Customer",
         policy => policy.RequireRole(AppRoles.Customer, AppRoles.SystemAdministrator)
+    );
+    options.AddPolicy(
+        "BrokerAgent",
+        policy => policy.RequireRole(AppRoles.BrokerAgent, AppRoles.SystemAdministrator)
     );
 });
 

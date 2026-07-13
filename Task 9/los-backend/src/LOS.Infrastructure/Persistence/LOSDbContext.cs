@@ -1,3 +1,4 @@
+using LOS.Application.Admin;
 using LOS.Domain.Entities;
 using LOS.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,12 @@ public class LOSDbContext(DbContextOptions<LOSDbContext> options) : DbContext(op
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<PasswordHistory> PasswordHistory => Set<PasswordHistory>();
+    public DbSet<LoanApplication> LoanApplications => Set<LoanApplication>();
+    public DbSet<CoApplicant> CoApplicants => Set<CoApplicant>();
+    public DbSet<KycDocument> KycDocuments => Set<KycDocument>();
+    public DbSet<ApplicationAuditLog> ApplicationAuditLogs => Set<ApplicationAuditLog>();
+    public DbSet<BranchPolicy> BranchPolicies => Set<BranchPolicy>();
+    public DbSet<BrandingSettings> BrandingSettings => Set<BrandingSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

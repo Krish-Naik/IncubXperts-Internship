@@ -33,21 +33,6 @@ export class VerificationDashboardComponent {}
 export class ApprovalsDashboardComponent {}
 
 @Component({
-  selector: 'app-customer-dashboard',
-  standalone: true,
-  imports: [PageHeaderComponent],
-  template: `
-    <app-page-header
-      title="My application"
-      subtitle="Track your loan application status or start a new application"
-    />
-    <div class="card">Customer application status placeholder.</div>
-  `,
-  styles: [`.card { background: #fff; padding: 1.5rem; border-radius: 12px; }`]
-})
-export class CustomerDashboardComponent {}
-
-@Component({
   selector: 'app-broker-dashboard',
   standalone: true,
   imports: [PageHeaderComponent],

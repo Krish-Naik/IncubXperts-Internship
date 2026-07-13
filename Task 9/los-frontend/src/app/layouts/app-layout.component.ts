@@ -1,16 +1,17 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
 import { UserContextService } from '../core/services/user-context.service';
+import { LogoComponent } from '../shared/components/logo.component';
 
 @Component({
   selector: 'app-app-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LogoComponent],
   template: `
     <div class="layout">
       <aside class="sidebar">
-        <div class="logo">LOS</div>
+        <div class="logo"><app-logo variant="full" [size]="32" /></div>
         <nav>
           @if (userContext.role() === 'SystemAdministrator') {
             <a routerLink="/admin/users" routerLinkActive="active">Users</a>
@@ -56,8 +57,6 @@ import { UserContextService } from '../core/services/user-context.service';
         padding: 1.5rem 1rem;
       }
       .logo {
-        font-size: 1.4rem;
-        font-weight: 700;
         margin-bottom: 2rem;
       }
       nav {
