@@ -6,53 +6,84 @@ using SendGrid.Helpers.Mail;
 
 namespace LOS.Infrastructure.Email;
 
-public class SendGridEmailService(
-    IOptions<EmailOptions> options,
-    ILogger<SendGridEmailService> logger
-) : IEmailService
+public sealed class SendGridEmailService : IEmailService
 {
-    private readonly SendGridSettings _settings = options.Value.SendGrid;
+    private readonly EmailOptions _options;
+    private readonly ILogger<SendGridEmailService> _logger;
+
+    public SendGridEmailService(
+        IOptions<EmailOptions> options,
+        ILogger<SendGridEmailService> logger
+    )
+    {
+        _options = options.Value;
+        _logger = logger;
+    }
 
     public async Task SendAsync(
         string toEmail,
         string subject,
         string htmlBody,
-        CancellationToken ct
+        CancellationToken cancellationToken = default
     )
     {
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        if (string.IsNullOrWhiteSpace(_options.SendGridApiKey))
         {
-            logger.LogError(
-                "SendGrid API key is not configured — check the Email__SendGrid__ApiKey app setting."
-            );
-            throw new InvalidOperationException("SendGrid is not configured.");
+            throw new InvalidOperationException("Email:SendGridApiKey is not configured.");
         }
 
-        var client = new SendGridClient(_settings.ApiKey);
-        var from = new EmailAddress(_settings.FromEmail, _settings.FromName);
-        var msg = MailHelper.CreateSingleEmail(
-            from,
+        if (string.IsNullOrWhiteSpace(_options.FromEmail))
+        {
+            throw new InvalidOperationException("Email:FromEmail is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(toEmail))
+        {
+            throw new ArgumentException("A recipient email address is required.", nameof(toEmail));
+        }
+
+        var client = new SendGridClient(_options.SendGridApiKey);
+
+        var message = MailHelper.CreateSingleEmail(
+            new EmailAddress(_options.FromEmail, _options.FromName),
             new EmailAddress(toEmail),
             subject,
-            null,
-            htmlBody
+            plainTextContent: StripHtml(htmlBody),
+            htmlContent: htmlBody
         );
-        var response = await client.SendEmailAsync(msg, ct);
+
+        var response = await client.SendEmailAsync(message, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Body.ReadAsStringAsync(ct);
-            logger.LogError(
-                "SendGrid send to {Email} failed with status {Status}: {Body}",
-                toEmail,
+            var responseBody = await response.Body.ReadAsStringAsync(cancellationToken);
+
+            _logger.LogError(
+                "SendGrid rejected email. StatusCode: {StatusCode}; Recipient: {Recipient}; Response: {Response}",
                 response.StatusCode,
-                body
+                toEmail,
+                responseBody
             );
+
             throw new InvalidOperationException(
-                $"SendGrid rejected the email ({response.StatusCode})."
+                $"SendGrid rejected email delivery with status {(int)response.StatusCode}."
             );
         }
 
-        logger.LogInformation("SendGrid: email sent successfully to {Email}", toEmail);
+        _logger.LogInformation(
+            "SendGrid accepted email. StatusCode: {StatusCode}; Recipient: {Recipient}; Subject: {Subject}",
+            response.StatusCode,
+            toEmail,
+            subject
+        );
+    }
+
+    private static string StripHtml(string html)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(
+            html ?? string.Empty,
+            "<.*?>",
+            string.Empty
+        );
     }
 }

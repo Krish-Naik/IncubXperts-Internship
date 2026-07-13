@@ -100,6 +100,7 @@ public class BrokerService(LOSDbContext db, AuthService authService, PasswordHas
                 "You can only upload documents for applications referred by you."
             );
     }
+
     public record ReferredApplicationRow(
         Guid Id,
         string ReferenceNumber,

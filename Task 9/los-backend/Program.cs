@@ -83,25 +83,46 @@ builder.Services.AddScoped<IFileStorageService>(sp =>
     return sp.GetRequiredService<IFileStorageResolver>().Resolve(provider);
 });
 
-// Same pattern for email: both concrete senders are always registered. Which one is
-// active is read from configuration at request time (not captured once at startup),
-// so in production you can flip between Mailtrap (demo-safe sandbox inbox) and SendGrid
-// (real delivery) purely via an App Service application setting + restart - no redeploy.
-// See "Email:Provider" in appsettings / deployment notes.
 builder.Services.AddScoped<SendGridEmailService>();
 builder.Services.AddScoped<FakeSmtpEmailService>();
 
 builder.Services.AddScoped<IEmailService>(sp =>
 {
-    var emailProvider = builder.Configuration["Email:Provider"] ?? "FakeSmtp";
-    IEmailService inner =
-        emailProvider == "SendGrid"
-            ? sp.GetRequiredService<SendGridEmailService>()
-            : sp.GetRequiredService<FakeSmtpEmailService>();
-    return new ResilientEmailService(
-        inner,
-        sp.GetRequiredService<ILogger<ResilientEmailService>>()
-    );
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var environment = sp.GetRequiredService<IHostEnvironment>();
+    var logger = sp.GetRequiredService<ILogger<ResilientEmailService>>();
+
+    var provider = configuration["Email:Provider"]?.Trim();
+
+    if (string.IsNullOrWhiteSpace(provider))
+    {
+        throw new InvalidOperationException(
+            "Email:Provider is missing. Configure it as 'Mailtrap' for development "
+                + "or 'SendGrid' for production."
+        );
+    }
+
+    IEmailService sender = provider.ToLowerInvariant() switch
+    {
+        "sendgrid" => sp.GetRequiredService<SendGridEmailService>(),
+        "mailtrap" or "fakesmtp" => sp.GetRequiredService<FakeSmtpEmailService>(),
+        _ => throw new InvalidOperationException(
+            $"Unsupported Email:Provider value '{provider}'. "
+                + "Supported values are Mailtrap and SendGrid."
+        ),
+    };
+
+    if (
+        environment.IsProduction()
+        && !provider.Equals("SendGrid", StringComparison.OrdinalIgnoreCase)
+    )
+    {
+        throw new InvalidOperationException(
+            "Production email delivery must use Email:Provider=SendGrid."
+        );
+    }
+
+    return new ResilientEmailService(sender, logger);
 });
 
 builder.Services.AddScoped<LoanApplicationService>();
