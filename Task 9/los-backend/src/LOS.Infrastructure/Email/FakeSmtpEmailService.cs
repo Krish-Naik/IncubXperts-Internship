@@ -23,7 +23,7 @@ public class FakeSmtpEmailService(
     )
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress("LOS Demo", "no-reply@los-demo.local"));
+        message.From.Add(new MailboxAddress("LOS Notifications", _settings.Username));
         message.To.Add(new MailboxAddress(toEmail, toEmail));
         message.Subject = subject;
         message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();

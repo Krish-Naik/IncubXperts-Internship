@@ -110,11 +110,15 @@ builder.Services.AddScoped<IEmailService>(sp =>
 
     if (
         environment.IsProduction()
-        && !provider.Equals("SendGrid", StringComparison.OrdinalIgnoreCase)
+        && !(
+            provider.Equals("SendGrid", StringComparison.OrdinalIgnoreCase)
+            || provider.Equals("FakeSmtp", StringComparison.OrdinalIgnoreCase)
+            || provider.Equals("Mailtrap", StringComparison.OrdinalIgnoreCase)
+        )
     )
     {
         throw new InvalidOperationException(
-            "Production email delivery must use Email:Provider=SendGrid."
+            "Production email delivery must use Email:Provider=SendGrid, FakeSmtp, or Mailtrap."
         );
     }
 
