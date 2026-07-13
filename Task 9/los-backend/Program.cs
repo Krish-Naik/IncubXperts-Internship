@@ -70,10 +70,6 @@ builder.Services.AddScoped<DatabaseSeeder>();
 
 builder.Services.AddHttpClient();
 
-// Both storage providers are always registered so that documents already saved under
-// one provider stay readable even after "Storage:Provider" is switched to the other
-// (see IFileStorageResolver, used by KycService for reads). The provider named by
-// configuration is what NEW uploads use.
 builder.Services.AddScoped<LocalDiskFileStorageService>();
 builder.Services.AddScoped<SupabaseStorageFileStorageService>();
 builder.Services.AddScoped<IFileStorageResolver, FileStorageResolver>();
