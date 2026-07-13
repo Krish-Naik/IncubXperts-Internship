@@ -6,3 +6,7 @@ obj
 .vs
 dist
 build
+appsettings.json
+main.parameters.json
+mcp.json
+docker-compose.yml

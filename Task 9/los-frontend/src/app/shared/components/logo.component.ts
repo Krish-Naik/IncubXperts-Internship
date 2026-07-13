@@ -1,0 +1,85 @@
+import { Component, Input } from '@angular/core';
+
+@Component({
+  selector: 'app-logo',
+  standalone: true,
+  template: `
+    <span class="app-logo" [class.app-logo--full]="variant === 'full'">
+      <svg
+        [attr.width]="size"
+        [attr.height]="size"
+        viewBox="0 0 48 48"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="LOS logo"
+      >
+        <defs>
+          <linearGradient id="losLogoGradient" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#1f7a8c" />
+            <stop offset="1" stop-color="#0f3d63" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M24 3 L42 10 V22.5 C42 33.5 34.6 41.8 24 45 C13.4 41.8 6 33.5 6 22.5 V10 Z"
+          fill="url(#losLogoGradient)"
+        />
+        <path
+          d="M24 3 L42 10 V22.5 C42 33.5 34.6 41.8 24 45 Z"
+          fill="#ffffff"
+          fill-opacity="0.08"
+        />
+        <path
+          d="M15.5 24 L21 29.5 L33 16.5"
+          stroke="#ffffff"
+          stroke-width="3.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          fill="none"
+        />
+      </svg>
+      @if (variant === 'full') {
+        <span class="app-logo__text">
+          <strong>LOS</strong>
+          <small>Loan Origination</small>
+        </span>
+      }
+    </span>
+  `,
+  styles: [
+    `
+      .app-logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+      .app-logo svg {
+        flex-shrink: 0;
+        display: block;
+      }
+      .app-logo__text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1;
+      }
+      .app-logo__text strong {
+        font-size: 1.15rem;
+        letter-spacing: 0.02em;
+        color: #fff;
+      }
+      .app-logo__text small {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #9fb3c8;
+      }
+      .app-logo--full.app-logo {
+        gap: 0.75rem;
+      }
+    `
+  ]
+})
+export class LogoComponent {
+  @Input() variant: 'mark' | 'full' = 'mark';
+  @Input() size = 36;
+}

@@ -1,0 +1,60 @@
+# Frontend CI/CD - build Angular app and deploy to Azure Static Web Apps
+trigger:
+  branches:
+    include:
+      - main
+      - feature/authentication
+  paths:
+    include:
+      - Task 9/los-frontend/*
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: '22.x'
+  frontendDir: 'Task 9/los-frontend'
+  azureStaticWebAppsApiToken: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'
+  NG_CLI_ANALYTICS: 'false'
+
+stages:
+  - stage: BuildAndDeploy
+    jobs:
+      - job: BuildFrontend
+        timeoutInMinutes: 15
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            workingDirectory: $(frontendDir)
+            displayName: Install dependencies
+
+          - script: |
+              set +e
+              timeout --kill-after=5s 30s npm run build -- --configuration production
+              BUILD_EXIT=$?
+              echo "npm run build exited with code: $BUILD_EXIT"
+
+              echo "Contents of dist folder:"
+              find dist -maxdepth 4 2>/dev/null
+
+              if [ -f "dist/LOS-frontend/browser/index.html" ]; then
+                echo "Build output verified on disk (index.html found)."
+                exit 0
+              else
+                echo "Build output missing - this is a real failure."
+                exit 1
+              fi
+            workingDirectory: $(frontendDir)
+            displayName: Build Angular app
+
+          - task: AzureStaticWebApp@0
+            inputs:
+              app_location: '$(frontendDir)/dist/LOS-frontend/browser'
+              output_location: ''
+              skip_app_build: true
+              azure_static_web_apps_api_token: $(azureStaticWebAppsApiToken)

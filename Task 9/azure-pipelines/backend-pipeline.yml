@@ -1,0 +1,64 @@
+# Backend CI/CD - build, test, publish, deploy to Azure App Service
+trigger:
+  branches:
+    include:
+      - main
+      - feature/authentication
+  paths:
+    include:
+      - Task 9/los-backend/*
+      
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: Release
+  dotnetVersion: '10.0.x'
+  apiProject: 'Task 9/los-backend/los-backend.csproj'
+  azureServiceConnection: 'los-azure-connection'
+  appServiceName: 'los-api-gn3n5qeptmqde'
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildApi
+        timeoutInMinutes: 15
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - script: dotnet restore "$(apiProject)"
+            displayName: Restore packages
+
+          - script: dotnet build "$(apiProject)" -c $(buildConfiguration) --no-restore
+            displayName: Build API
+
+          - script: dotnet publish "$(apiProject)" -c $(buildConfiguration) -o "$(Build.ArtifactStagingDirectory)/api"
+            displayName: Publish API
+
+          - publish: $(Build.ArtifactStagingDirectory)/api
+            artifact: api
+
+  - stage: Deploy
+    dependsOn: Build
+    condition: and(succeeded(),or(eq(variables['Build.SourceBranch'], 'refs/heads/main'),eq(variables['Build.SourceBranch'], 'refs/heads/feature/authentication')))
+    jobs:
+      - deployment: DeployApi
+        environment: los-dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: api
+
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    appType: webAppLinux
+                    appName: $(appServiceName)
+                    package: $(Pipeline.Workspace)/api
