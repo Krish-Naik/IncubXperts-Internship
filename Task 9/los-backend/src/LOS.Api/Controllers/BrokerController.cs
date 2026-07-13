@@ -31,6 +31,17 @@ public class BrokerController(BrokerService brokerService, KycService kycService
             )
         );
 
+    [HttpGet("leads")]
+    public async Task<IActionResult> GetMyLeads(CancellationToken ct) =>
+        Ok(await brokerService.GetMyLeadsAsync(CurrentUserId, ct));
+
+    [HttpPost("leads/{leadId:guid}/resend-invite")]
+    public async Task<IActionResult> ResendLeadInvite(Guid leadId, CancellationToken ct)
+    {
+        await brokerService.ResendLeadInviteAsync(CurrentUserId, leadId, ct);
+        return NoContent();
+    }
+
     [HttpGet("pipeline")]
     public async Task<IActionResult> GetPipeline(
         [FromQuery] DateTime? from,

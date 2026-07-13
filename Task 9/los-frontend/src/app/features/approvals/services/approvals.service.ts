@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { LoanApplication } from '../../../core/models/application.model';
+import { ApplicationDetail, LoanApplication } from '../../../core/models/application.model';
 import { ApprovalQueueItem, DisbursementQueueItem } from '../../../core/models/approval.model';
 
 @Injectable({ providedIn: 'root' })
@@ -13,6 +13,10 @@ export class ApprovalsService {
 
   getQueue(): Observable<ApprovalQueueItem[]> {
     return this.http.get<ApprovalQueueItem[]>(`${this.approvalsBase}/queue`);
+  }
+
+  getApplicationDetail(applicationId: string): Observable<ApplicationDetail> {
+    return this.http.get<ApplicationDetail>(`${this.approvalsBase}/applications/${applicationId}/detail`);
   }
 
   approve(id: string, interestRate: number, tenureMonths: number): Observable<LoanApplication> {

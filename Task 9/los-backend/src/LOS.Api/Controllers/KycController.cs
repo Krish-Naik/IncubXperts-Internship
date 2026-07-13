@@ -1,3 +1,4 @@
+using LOS.Application.Applications;
 using LOS.Application.Kyc;
 using LOS.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,8 @@ namespace LOS.Api.Controllers;
 
 [ApiController]
 [Route("api/kyc")]
-public class KycController(KycService kycService) : ControllerBase
+public class KycController(KycService kycService, LoanApplicationService applicationService)
+    : ControllerBase
 {
     [HttpPost("{applicationId:guid}/upload")]
     [Authorize(Policy = "Customer")]
@@ -37,14 +39,19 @@ public class KycController(KycService kycService) : ControllerBase
     public async Task<IActionResult> GetQueue(CancellationToken ct) =>
         Ok(await kycService.GetReviewQueueAsync(ct));
 
+    [HttpGet("applications/{applicationId:guid}/detail")]
+    [Authorize(Policy = "VerificationOfficer")]
+    public async Task<IActionResult> GetApplicationDetail(
+        Guid applicationId,
+        CancellationToken ct
+    ) => Ok(await applicationService.GetApplicationDetailAsync(applicationId, ct));
+
     [HttpGet("{documentId:guid}/file")]
     [Authorize(Policy = "VerificationOfficer")]
     public async Task<IActionResult> GetFile(Guid documentId, CancellationToken ct)
     {
         var file = await kycService.GetDocumentFileAsync(documentId, ct);
 
-        // "inline" (not "attachment") is what makes the browser render the PDF/image
-        // instead of prompting a download.
         Response.Headers.ContentDisposition = $"inline; filename=\"{file.FileName}\"";
         return File(file.Content, file.ContentType);
     }

@@ -4,6 +4,7 @@ import { PageHeaderComponent } from '../../../shared/components/page-header.comp
 import { UserContextService } from '../../../core/services/user-context.service';
 import { ApprovalsService } from '../services/approvals.service';
 import { ApprovalQueueItem, DisbursementQueueItem } from '../../../core/models/approval.model';
+import { ApplicationDetail } from '../../../core/models/application.model';
 
 type DecisionForm = { interestRate: number | null; tenureMonths: number | null };
 type RejectForm = { reason: string };
@@ -38,7 +39,12 @@ type InfoForm = { details: string };
             <strong>{{ item.referenceNumber }}</strong>
             <span class="muted">{{ item.customerName }} &middot; {{ item.loanType }} &middot; ₹{{ item.requestedAmount }} &middot; {{ item.requestedTenureMonths }} months</span>
           </div>
-          <span class="status" [class]="'status-' + item.status.toLowerCase()">{{ item.status }}</span>
+          <div class="row-actions">
+            <button type="button" class="btn secondary" [disabled]="detailLoading() && detailItemId() === item.id" (click)="viewDetail(item)">
+              {{ detailLoading() && detailItemId() === item.id ? 'Loading...' : 'View full details' }}
+            </button>
+            <span class="status" [class]="'status-' + item.status.toLowerCase()">{{ item.status }}</span>
+          </div>
         </div>
 
         @if (item.status === 'Verified') {
@@ -130,6 +136,95 @@ type InfoForm = { details: string };
         </div>
       </div>
     }
+
+    @if (detail()) {
+      <div class="viewer-backdrop" (click)="closeDetail()">
+        <div class="viewer-panel detail-panel" (click)="$event.stopPropagation()">
+          <div class="viewer-header">
+            <strong>{{ detail()!.referenceNumber }} &middot; {{ detail()!.status }}</strong>
+            <button type="button" class="secondary" (click)="closeDetail()">Close</button>
+          </div>
+          <div class="detail-body">
+            <section>
+              <h4>Customer</h4>
+              <p>{{ detail()!.customerName }} &middot; {{ detail()!.customerEmail }} &middot; {{ detail()!.customerPhone }}</p>
+              @if (detail()!.brokerName) {
+                <p class="muted">Referred by broker: {{ detail()!.brokerName }}</p>
+              }
+            </section>
+
+            <section>
+              <h4>Loan</h4>
+              <p>
+                {{ detail()!.loanType }} &middot; ₹{{ detail()!.requestedAmount }} requested &middot;
+                {{ detail()!.requestedTenureMonths }} months
+              </p>
+              @if (detail()!.approvedInterestRate) {
+                <p class="muted">
+                  Approved: {{ detail()!.approvedInterestRate }}% for {{ detail()!.approvedTenureMonths }} months
+                  &middot; EMI ₹{{ detail()!.monthlyEmi }}
+                </p>
+              }
+            </section>
+
+            @if (objectKeys(detail()!.extraDetails).length > 0) {
+              <section>
+                <h4>Loan-type details</h4>
+                <ul class="kv-list">
+                  @for (key of objectKeys(detail()!.extraDetails); track key) {
+                    <li><span class="muted">{{ key }}</span> {{ detail()!.extraDetails[key] }}</li>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (detail()!.coApplicants.length > 0) {
+              <section>
+                <h4>Co-applicants</h4>
+                <ul class="kv-list">
+                  @for (co of detail()!.coApplicants; track co.id) {
+                    <li>{{ co.fullName }} &middot; {{ co.pan }} &middot; ₹{{ co.monthlyIncome }}/month</li>
+                  }
+                </ul>
+              </section>
+            }
+
+            <section>
+              <h4>Documents</h4>
+              @if (detail()!.documents.length === 0) {
+                <p class="muted">No documents uploaded yet.</p>
+              }
+              <ul class="kv-list">
+                @for (doc of detail()!.documents; track doc.id) {
+                  <li>
+                    {{ doc.docType }} &middot; {{ doc.status }} &middot; {{ doc.originalFileName }}
+                    @if (doc.uploadedByBroker) { &middot; uploaded by broker }
+                    @if (doc.reviewerRemarks) { <br /><span class="muted">Remarks: {{ doc.reviewerRemarks }}</span> }
+                  </li>
+                }
+              </ul>
+            </section>
+
+            @if (detail()!.infoRequestDetails) {
+              <section>
+                <h4>Info request history</h4>
+                <p class="muted">Requested: {{ detail()!.infoRequestDetails }}</p>
+                @if (detail()!.infoResponseText) {
+                  <p class="muted">Customer response: {{ detail()!.infoResponseText }}</p>
+                }
+              </section>
+            }
+
+            @if (detail()!.rejectionReason) {
+              <section>
+                <h4>Rejection reason</h4>
+                <p class="muted">{{ detail()!.rejectionReason }}</p>
+              </section>
+            }
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -143,6 +238,12 @@ type InfoForm = { details: string };
         display: flex;
         justify-content: space-between;
         align-items: center;
+      }
+      .row-actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        flex-wrap: wrap;
       }
       .muted {
         display: block;
@@ -183,7 +284,8 @@ type InfoForm = { details: string };
         border-radius: 8px;
         border: 1px solid #cbd5e0;
       }
-      button {
+      button,
+      .btn {
         background: #1f7a8c;
         color: #fff;
         border: none;
@@ -192,7 +294,8 @@ type InfoForm = { details: string };
         cursor: pointer;
         height: fit-content;
       }
-      button.secondary {
+      button.secondary,
+      .btn.secondary {
         background: #fff;
         color: #1f7a8c;
         border: 1px solid #1f7a8c;
@@ -203,6 +306,60 @@ type InfoForm = { details: string };
       }
       .error {
         color: #c53030;
+      }
+      .viewer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(16, 42, 67, 0.65);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 2rem;
+      }
+      .viewer-panel {
+        background: #fff;
+        border-radius: 12px;
+        width: min(900px, 100%);
+        height: min(85vh, 900px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #edf1f5;
+      }
+      .detail-panel {
+        overflow-y: auto;
+      }
+      .detail-body {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .detail-body h4 {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+      }
+      .kv-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .kv-list li {
+        padding: 0.35rem 0;
+        border-bottom: 1px solid #edf1f5;
+        font-size: 0.9rem;
+      }
+      .kv-list li .muted {
+        margin-right: 0.5rem;
+        font-weight: 600;
+        display: inline;
       }
     `
   ]
@@ -224,6 +381,11 @@ export class ApprovalsDashboardComponent implements OnInit {
   rejectForms: Record<string, RejectForm> = {};
   infoForms: Record<string, InfoForm> = {};
   disburseForms: Record<string, string> = {};
+
+  readonly detail = signal<ApplicationDetail | null>(null);
+  readonly detailLoading = signal(false);
+  readonly detailItemId = signal<string | null>(null);
+  readonly objectKeys = Object.keys;
 
   ngOnInit(): void {
     this.loadQueue();
@@ -261,6 +423,27 @@ export class ApprovalsDashboardComponent implements OnInit {
         this.disbursementLoading.set(false);
       }
     });
+  }
+
+  viewDetail(item: ApprovalQueueItem): void {
+    this.error.set('');
+    this.detailLoading.set(true);
+    this.detailItemId.set(item.id);
+    this.approvalsService.getApplicationDetail(item.id).subscribe({
+      next: (d) => {
+        this.detail.set(d);
+        this.detailLoading.set(false);
+      },
+      error: (err: Error) => {
+        this.error.set(err.message);
+        this.detailLoading.set(false);
+      }
+    });
+  }
+
+  closeDetail(): void {
+    this.detail.set(null);
+    this.detailItemId.set(null);
   }
 
   approve(item: ApprovalQueueItem): void {

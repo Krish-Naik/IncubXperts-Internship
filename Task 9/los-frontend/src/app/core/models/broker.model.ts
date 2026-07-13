@@ -11,6 +11,15 @@ export interface LeadResult {
   phone: string;
 }
 
+export interface LeadRow {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  status: string;
+  createdAtUtc: string;
+}
+
 export interface ReferredApplicationRow {
   id: string;
   referenceNumber: string;

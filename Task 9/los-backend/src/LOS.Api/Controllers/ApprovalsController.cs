@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using LOS.Application.Applications;
 using LOS.Application.Approvals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,10 @@ namespace LOS.Api.Controllers;
 [ApiController]
 [Route("api/approvals")]
 [Authorize(Policy = "BranchManager")]
-public class ApprovalsController(LoanApprovalService approvalService) : ControllerBase
+public class ApprovalsController(
+    LoanApprovalService approvalService,
+    LoanApplicationService applicationService
+) : ControllerBase
 {
     private Guid CurrentUserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -23,6 +27,12 @@ public class ApprovalsController(LoanApprovalService approvalService) : Controll
     [HttpGet("queue")]
     public async Task<IActionResult> GetQueue(CancellationToken ct) =>
         Ok(await approvalService.GetQueueAsync(ct));
+
+    [HttpGet("applications/{applicationId:guid}/detail")]
+    public async Task<IActionResult> GetApplicationDetail(
+        Guid applicationId,
+        CancellationToken ct
+    ) => Ok(await applicationService.GetApplicationDetailAsync(applicationId, ct));
 
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> Approve(

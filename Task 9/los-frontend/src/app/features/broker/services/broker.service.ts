@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { LeadResult, ReferredApplicationRow, RegisterLeadRequest } from '../../../core/models/broker.model';
+import { LeadResult, LeadRow, ReferredApplicationRow, RegisterLeadRequest } from '../../../core/models/broker.model';
 
 @Injectable({ providedIn: 'root' })
 export class BrokerService {
@@ -11,6 +11,14 @@ export class BrokerService {
 
   registerLead(request: RegisterLeadRequest): Observable<LeadResult> {
     return this.http.post<LeadResult>(`${this.base}/leads`, request);
+  }
+
+  getMyLeads(): Observable<LeadRow[]> {
+    return this.http.get<LeadRow[]>(`${this.base}/leads`);
+  }
+
+  resendLeadInvite(leadId: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/leads/${leadId}/resend-invite`, {});
   }
 
   getPipeline(from?: string, to?: string): Observable<ReferredApplicationRow[]> {

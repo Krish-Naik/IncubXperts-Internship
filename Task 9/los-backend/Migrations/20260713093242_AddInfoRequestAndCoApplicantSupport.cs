@@ -14,35 +14,32 @@ namespace LOS.Migrations
                 name: "ExtraDetailsJson",
                 table: "LoanApplications",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
 
             migrationBuilder.AddColumn<string>(
                 name: "InfoRequestDetails",
                 table: "LoanApplications",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
 
             migrationBuilder.AddColumn<string>(
                 name: "InfoResponseText",
                 table: "LoanApplications",
                 type: "text",
-                nullable: true);
+                nullable: true
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ExtraDetailsJson",
-                table: "LoanApplications");
+            migrationBuilder.DropColumn(name: "ExtraDetailsJson", table: "LoanApplications");
 
-            migrationBuilder.DropColumn(
-                name: "InfoRequestDetails",
-                table: "LoanApplications");
+            migrationBuilder.DropColumn(name: "InfoRequestDetails", table: "LoanApplications");
 
-            migrationBuilder.DropColumn(
-                name: "InfoResponseText",
-                table: "LoanApplications");
+            migrationBuilder.DropColumn(name: "InfoResponseText", table: "LoanApplications");
         }
     }
 }

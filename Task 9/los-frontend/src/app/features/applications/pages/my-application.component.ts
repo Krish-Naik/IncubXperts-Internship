@@ -122,10 +122,9 @@ import { LOAN_TYPE_FIELDS, LoanApplication, LoanType } from '../../../core/model
           <div class="draft-actions info-requested">
             <p><strong>Your branch manager needs more information:</strong></p>
             <p class="muted">{{ app.infoRequestDetails }}</p>
-            <p class="muted">If new documents are needed, upload them below before resubmitting.</p>
-            <app-kyc-upload [applicationId]="app.id" />
+            <app-kyc-upload [applicationId]="app.id" mode="single" />
             <label>Your response</label>
-            <textarea [(ngModel)]="infoResponseDrafts[app.id]" [ngModelOptions]="{ standalone: true }" rows="3"></textarea>
+            <textarea [(ngModel)]="infoResponseDrafts[app.id]" [ngModelOptions]="{ standalone: true }" rows="3" placeholder="Explain, clarify, or confirm what was asked — a new document is only needed if requested."></textarea>
             <button type="button" (click)="respondToInfoRequest(app.id)" [disabled]="submitting() === app.id">
               {{ submitting() === app.id ? 'Resubmitting...' : 'Resubmit application' }}
             </button>

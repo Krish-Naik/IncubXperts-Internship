@@ -102,7 +102,13 @@ public class DisbursementService(LOSDbContext db, IEmailService emailService)
         return app;
     }
 
-    public record EmiScheduleRow(int Month, decimal Emi, decimal Principal, decimal Interest, decimal Balance);
+    public record EmiScheduleRow(
+        int Month,
+        decimal Emi,
+        decimal Principal,
+        decimal Interest,
+        decimal Balance
+    );
 
     public List<EmiScheduleRow> GetRepaymentSchedule(LoanApplication app)
     {

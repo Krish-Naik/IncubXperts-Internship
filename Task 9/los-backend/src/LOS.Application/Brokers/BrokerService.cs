@@ -53,10 +53,38 @@ public class BrokerService(LOSDbContext db, AuthService authService, PasswordHas
         return lead;
     }
 
-    /// <summary>
-    /// Verifies the given application was referred by this broker before letting them
-    /// act on it (e.g. upload a document on the customer's behalf).
-    /// </summary>
+    public record LeadRow(
+        Guid Id,
+        string FullName,
+        string Email,
+        string Phone,
+        UserStatus Status,
+        DateTime CreatedAtUtc
+    );
+
+    public async Task<List<LeadRow>> GetMyLeadsAsync(Guid brokerId, CancellationToken ct)
+    {
+        return await db
+            .InternalUsers.Where(u => u.ReferredByBrokerId == brokerId)
+            .OrderByDescending(u => u.CreatedAtUtc)
+            .Select(u => new LeadRow(u.Id, u.FullName, u.Email, u.Phone, u.Status, u.CreatedAtUtc))
+            .ToListAsync(ct);
+    }
+
+    public async Task ResendLeadInviteAsync(Guid brokerId, Guid leadId, CancellationToken ct)
+    {
+        var lead =
+            await db.InternalUsers.FirstOrDefaultAsync(
+                u => u.Id == leadId && u.ReferredByBrokerId == brokerId,
+                ct
+            ) ?? throw new KeyNotFoundException("Lead not found.");
+
+        if (lead.Status != UserStatus.Invited)
+            throw new InvalidOperationException("Only invited leads can receive a new invitation.");
+
+        await authService.CreateResetTokenAsync(leadId, isInvite: true, ct);
+    }
+
     public async Task EnsureBrokerOwnsApplicationAsync(
         Guid brokerId,
         Guid applicationId,
@@ -72,9 +100,6 @@ public class BrokerService(LOSDbContext db, AuthService authService, PasswordHas
                 "You can only upload documents for applications referred by you."
             );
     }
-
-    // Id added so the frontend can let brokers pick from a dropdown instead of
-    // asking the customer to copy a raw GUID out of the URL (see broker flow fix below).
     public record ReferredApplicationRow(
         Guid Id,
         string ReferenceNumber,

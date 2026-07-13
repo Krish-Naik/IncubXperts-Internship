@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { KycQueueItem } from '../../../core/models/kyc.model';
+import { ApplicationDetail } from '../../../core/models/application.model';
 
 @Injectable({ providedIn: 'root' })
 export class KycService {
@@ -24,6 +25,10 @@ export class KycService {
     return this.http.get<KycQueueItem[]>(`${this.base}/queue`);
   }
 
+  getApplicationDetail(applicationId: string): Observable<ApplicationDetail> {
+    return this.http.get<ApplicationDetail>(`${this.base}/applications/${applicationId}/detail`);
+  }
+
   reviewDocument(
     documentId: string,
     status: 'Approved' | 'Rejected',
@@ -36,11 +41,6 @@ export class KycService {
     return `${this.base}/${documentId}/file`;
   }
 
-  /**
-   * Fetches the document as a blob so it can be displayed in an in-app viewer
-   * (iframe/img) instead of the browser navigating to the URL directly, which
-   * would otherwise honor the server's Content-Disposition and download it.
-   */
   getFileBlob(documentId: string): Observable<Blob> {
     return this.http.get(`${this.base}/${documentId}/file`, { responseType: 'blob' });
   }

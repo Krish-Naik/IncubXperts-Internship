@@ -31,10 +31,9 @@ public class LoanApplicationService(LOSDbContext db, IEmailService emailService)
             RequestedTenureMonths = tenureMonths,
             Status = ApplicationStatus.Draft,
             ReferenceNumber = $"LOS-{DateTime.UtcNow.Year}-{Random.Shared.Next(100000, 999999)}",
-            ExtraDetailsJson =
-                extraDetails is { Count: > 0 }
-                    ? System.Text.Json.JsonSerializer.Serialize(extraDetails)
-                    : null,
+            ExtraDetailsJson = extraDetails is { Count: > 0 }
+                ? System.Text.Json.JsonSerializer.Serialize(extraDetails)
+                : null,
         };
         db.LoanApplications.Add(app);
         await db.SaveChangesAsync(ct);
@@ -136,6 +135,7 @@ public class LoanApplicationService(LOSDbContext db, IEmailService emailService)
 
         return app;
     }
+
     public async Task<CoApplicant> AddCoApplicantAsync(
         Guid applicationId,
         Guid customerId,
@@ -196,6 +196,104 @@ public class LoanApplicationService(LOSDbContext db, IEmailService emailService)
 
         db.CoApplicants.Remove(coApplicant);
         await db.SaveChangesAsync(ct);
+    }
+
+    public record CoApplicantDto(Guid Id, string FullName, string Pan, decimal MonthlyIncome);
+
+    public record ApplicationDocumentDto(
+        Guid Id,
+        DocumentType DocType,
+        DocumentStatus Status,
+        string OriginalFileName,
+        bool UploadedByBroker,
+        DateTime UploadedAtUtc,
+        string? ReviewerRemarks
+    );
+
+    public record ApplicationDetailDto(
+        Guid Id,
+        string ReferenceNumber,
+        ApplicationStatus Status,
+        LoanType LoanType,
+        decimal RequestedAmount,
+        int RequestedTenureMonths,
+        DateTime CreatedAtUtc,
+        DateTime? SubmittedAtUtc,
+        string CustomerName,
+        string CustomerEmail,
+        string CustomerPhone,
+        string? BrokerName,
+        Dictionary<string, string> ExtraDetails,
+        List<CoApplicantDto> CoApplicants,
+        List<ApplicationDocumentDto> Documents,
+        string? InfoRequestDetails,
+        string? InfoResponseText,
+        decimal? ApprovedInterestRate,
+        int? ApprovedTenureMonths,
+        decimal? MonthlyEmi,
+        string? RejectionReason
+    );
+
+    public async Task<ApplicationDetailDto> GetApplicationDetailAsync(
+        Guid applicationId,
+        CancellationToken ct
+    )
+    {
+        var app =
+            await db
+                .LoanApplications.Include(a => a.Customer)
+                .Include(a => a.Broker)
+                .Include(a => a.CoApplicants)
+                .Include(a => a.KycDocuments)
+                .FirstOrDefaultAsync(a => a.Id == applicationId, ct)
+            ?? throw new InvalidOperationException("Application not found.");
+
+        var extraDetails = string.IsNullOrWhiteSpace(app.ExtraDetailsJson)
+            ? new Dictionary<string, string>()
+            : System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                app.ExtraDetailsJson
+            ) ?? new Dictionary<string, string>();
+
+        return new ApplicationDetailDto(
+            app.Id,
+            app.ReferenceNumber,
+            app.Status,
+            app.LoanType,
+            app.RequestedAmount,
+            app.RequestedTenureMonths,
+            app.CreatedAtUtc,
+            app.SubmittedAtUtc,
+            app.Customer.FullName,
+            app.Customer.Email,
+            app.Customer.Phone,
+            app.Broker?.FullName,
+            extraDetails,
+            app.CoApplicants.Select(c => new CoApplicantDto(
+                    c.Id,
+                    c.FullName,
+                    c.Pan,
+                    c.MonthlyIncome
+                ))
+                .ToList(),
+            app.KycDocuments.Where(d => !d.IsArchived)
+                .OrderByDescending(d => d.UploadedAtUtc)
+                .Select(d => new ApplicationDocumentDto(
+                    d.Id,
+                    d.DocType,
+                    d.Status,
+                    d.OriginalFileName,
+                    d.UploadedByBroker,
+                    d.UploadedAtUtc,
+                    d.ReviewerRemarks
+                ))
+                .ToList(),
+            app.InfoRequestDetails,
+            app.InfoResponseText,
+            app.ApprovedInterestRate,
+            app.ApprovedTenureMonths,
+            app.MonthlyEmi,
+            app.RejectionReason
+        );
     }
 
     public Task<List<LoanApplication>> GetMyApplicationsAsync(

@@ -4,6 +4,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 import { KycService } from '../../kyc/services/kyc.service';
 import { KycQueueItem } from '../../../core/models/kyc.model';
+import { ApplicationDetail } from '../../../core/models/application.model';
 
 @Component({
   selector: 'app-verification-dashboard',
@@ -37,9 +38,14 @@ import { KycQueueItem } from '../../../core/models/kyc.model';
               @if (item.uploadedByBroker) { &middot; uploaded by broker }
             </span>
           </div>
-          <button type="button" class="btn secondary" [disabled]="viewerLoading()" (click)="viewDocument(item)">
-            {{ viewerLoading() && viewingId() === item.id ? 'Loading...' : 'View document' }}
-          </button>
+          <div class="row-actions">
+            <button type="button" class="btn secondary" [disabled]="detailLoading() && detailItemId() === item.id" (click)="viewDetail(item)">
+              {{ detailLoading() && detailItemId() === item.id ? 'Loading...' : 'View full details' }}
+            </button>
+            <button type="button" class="btn secondary" [disabled]="viewerLoading()" (click)="viewDocument(item)">
+              {{ viewerLoading() && viewingId() === item.id ? 'Loading...' : 'View document' }}
+            </button>
+          </div>
         </div>
 
         <div class="actions-block">
@@ -74,6 +80,95 @@ import { KycQueueItem } from '../../../core/models/kyc.model';
         </div>
       </div>
     }
+
+    @if (detail()) {
+      <div class="viewer-backdrop" (click)="closeDetail()">
+        <div class="viewer-panel detail-panel" (click)="$event.stopPropagation()">
+          <div class="viewer-header">
+            <strong>{{ detail()!.referenceNumber }} &middot; {{ detail()!.status }}</strong>
+            <button type="button" class="secondary" (click)="closeDetail()">Close</button>
+          </div>
+          <div class="detail-body">
+            <section>
+              <h4>Customer</h4>
+              <p>{{ detail()!.customerName }} &middot; {{ detail()!.customerEmail }} &middot; {{ detail()!.customerPhone }}</p>
+              @if (detail()!.brokerName) {
+                <p class="muted">Referred by broker: {{ detail()!.brokerName }}</p>
+              }
+            </section>
+
+            <section>
+              <h4>Loan</h4>
+              <p>
+                {{ detail()!.loanType }} &middot; ₹{{ detail()!.requestedAmount }} requested &middot;
+                {{ detail()!.requestedTenureMonths }} months
+              </p>
+              @if (detail()!.approvedInterestRate) {
+                <p class="muted">
+                  Approved: {{ detail()!.approvedInterestRate }}% for {{ detail()!.approvedTenureMonths }} months
+                  &middot; EMI ₹{{ detail()!.monthlyEmi }}
+                </p>
+              }
+            </section>
+
+            @if (objectKeys(detail()!.extraDetails).length > 0) {
+              <section>
+                <h4>Loan-type details</h4>
+                <ul class="kv-list">
+                  @for (key of objectKeys(detail()!.extraDetails); track key) {
+                    <li><span class="muted">{{ key }}</span> {{ detail()!.extraDetails[key] }}</li>
+                  }
+                </ul>
+              </section>
+            }
+
+            @if (detail()!.coApplicants.length > 0) {
+              <section>
+                <h4>Co-applicants</h4>
+                <ul class="kv-list">
+                  @for (co of detail()!.coApplicants; track co.id) {
+                    <li>{{ co.fullName }} &middot; {{ co.pan }} &middot; ₹{{ co.monthlyIncome }}/month</li>
+                  }
+                </ul>
+              </section>
+            }
+
+            <section>
+              <h4>Documents</h4>
+              @if (detail()!.documents.length === 0) {
+                <p class="muted">No documents uploaded yet.</p>
+              }
+              <ul class="kv-list">
+                @for (doc of detail()!.documents; track doc.id) {
+                  <li>
+                    {{ doc.docType }} &middot; {{ doc.status }} &middot; {{ doc.originalFileName }}
+                    @if (doc.uploadedByBroker) { &middot; uploaded by broker }
+                    @if (doc.reviewerRemarks) { <br /><span class="muted">Remarks: {{ doc.reviewerRemarks }}</span> }
+                  </li>
+                }
+              </ul>
+            </section>
+
+            @if (detail()!.infoRequestDetails) {
+              <section>
+                <h4>Info request history</h4>
+                <p class="muted">Requested: {{ detail()!.infoRequestDetails }}</p>
+                @if (detail()!.infoResponseText) {
+                  <p class="muted">Customer response: {{ detail()!.infoResponseText }}</p>
+                }
+              </section>
+            }
+
+            @if (detail()!.rejectionReason) {
+              <section>
+                <h4>Rejection reason</h4>
+                <p class="muted">{{ detail()!.rejectionReason }}</p>
+              </section>
+            }
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [
     `
@@ -88,6 +183,11 @@ import { KycQueueItem } from '../../../core/models/kyc.model';
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
+      }
+      .row-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
       }
       .muted {
         display: block;
@@ -185,6 +285,34 @@ import { KycQueueItem } from '../../../core/models/kyc.model';
         object-fit: contain;
         background: #0b1f33;
       }
+      .detail-panel {
+        overflow-y: auto;
+      }
+      .detail-body {
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .detail-body h4 {
+        margin: 0 0 0.5rem;
+        font-size: 0.95rem;
+      }
+      .kv-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .kv-list li {
+        padding: 0.35rem 0;
+        border-bottom: 1px solid #edf1f5;
+        font-size: 0.9rem;
+      }
+      .kv-list li .muted {
+        margin-right: 0.5rem;
+        font-weight: 600;
+        display: inline;
+      }
     `
   ]
 })
@@ -204,6 +332,11 @@ export class VerificationDashboardComponent implements OnInit, OnDestroy {
   readonly viewingFileName = signal('');
   readonly viewingIsImage = signal(false);
   private viewerObjectUrl: string | null = null;
+
+  readonly detail = signal<ApplicationDetail | null>(null);
+  readonly detailLoading = signal(false);
+  readonly detailItemId = signal<string | null>(null);
+  readonly objectKeys = Object.keys;
 
   ngOnInit(): void {
     this.load();
@@ -242,6 +375,29 @@ export class VerificationDashboardComponent implements OnInit, OnDestroy {
     this.viewerUrl.set(null);
     this.viewingId.set(null);
     this.revokeViewerObjectUrl();
+  }
+
+  // Note: item.id here is the *document* id (this queue is one row per pending
+  // document). The detail view needs the application, so it uses item.loanApplicationId.
+  viewDetail(item: KycQueueItem): void {
+    this.error.set('');
+    this.detailLoading.set(true);
+    this.detailItemId.set(item.id);
+    this.kycService.getApplicationDetail(item.loanApplicationId).subscribe({
+      next: (d) => {
+        this.detail.set(d);
+        this.detailLoading.set(false);
+      },
+      error: (err: Error) => {
+        this.error.set(err.message);
+        this.detailLoading.set(false);
+      }
+    });
+  }
+
+  closeDetail(): void {
+    this.detail.set(null);
+    this.detailItemId.set(null);
   }
 
   private revokeViewerObjectUrl(): void {

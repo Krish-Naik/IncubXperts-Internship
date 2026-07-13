@@ -1,4 +1,10 @@
-export enum LoanType { Home = 'Home', Personal = 'Personal', Auto = 'Auto', Business = 'Business' }
+export enum LoanType {
+  Home = 'Home',
+  Personal = 'Personal',
+  Auto = 'Auto',
+  Business = 'Business'
+}
+
 export enum ApplicationStatus {
   Draft = 'Draft',
   Submitted = 'Submitted',
@@ -58,3 +64,37 @@ export const LOAN_TYPE_FIELDS: Record<LoanType, { key: string; label: string }[]
     { key: 'yearsInOperation', label: 'Years in operation' }
   ]
 };
+
+export interface ApplicationDocumentDetail {
+  id: string;
+  docType: string;
+  status: string;
+  originalFileName: string;
+  uploadedByBroker: boolean;
+  uploadedAtUtc: string;
+  reviewerRemarks?: string | null;
+}
+
+export interface ApplicationDetail {
+  id: string;
+  referenceNumber: string;
+  status: string;
+  loanType: string;
+  requestedAmount: number;
+  requestedTenureMonths: number;
+  createdAtUtc: string;
+  submittedAtUtc?: string | null;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  brokerName?: string | null;
+  extraDetails: Record<string, string>;
+  coApplicants: CoApplicant[];
+  documents: ApplicationDocumentDetail[];
+  infoRequestDetails?: string | null;
+  infoResponseText?: string | null;
+  approvedInterestRate?: number | null;
+  approvedTenureMonths?: number | null;
+  monthlyEmi?: number | null;
+  rejectionReason?: string | null;
+}

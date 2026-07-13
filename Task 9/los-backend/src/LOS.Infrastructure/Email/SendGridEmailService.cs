@@ -20,6 +20,14 @@ public class SendGridEmailService(
         CancellationToken ct
     )
     {
+        if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+        {
+            logger.LogError(
+                "SendGrid API key is not configured — check the Email__SendGrid__ApiKey app setting."
+            );
+            throw new InvalidOperationException("SendGrid is not configured.");
+        }
+
         var client = new SendGridClient(_settings.ApiKey);
         var from = new EmailAddress(_settings.FromEmail, _settings.FromName);
         var msg = MailHelper.CreateSingleEmail(
@@ -32,6 +40,19 @@ public class SendGridEmailService(
         var response = await client.SendEmailAsync(msg, ct);
 
         if (!response.IsSuccessStatusCode)
-            logger.LogWarning("SendGrid send failed with status {Status}", response.StatusCode);
+        {
+            var body = await response.Body.ReadAsStringAsync(ct);
+            logger.LogError(
+                "SendGrid send to {Email} failed with status {Status}: {Body}",
+                toEmail,
+                response.StatusCode,
+                body
+            );
+            throw new InvalidOperationException(
+                $"SendGrid rejected the email ({response.StatusCode})."
+            );
+        }
+
+        logger.LogInformation("SendGrid: email sent successfully to {Email}", toEmail);
     }
 }
